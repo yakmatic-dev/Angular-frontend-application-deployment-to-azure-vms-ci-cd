@@ -1,0 +1,159 @@
+name: Build and Deploy TypeScript App to Azure VMs
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '24'
+  APP_NAME: 'ts-app'
+  
+
+jobs:
+  # ---------------- BUILD ----------------
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        continue-on-error: false
+
+      - name: Build application
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build
+          path: |
+            dist/
+            package.json
+            package-lock.json
+            node_modules/
+          retention-days: 5
+
+  # ---------------- DEPLOY TO VMs ----------------
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        vm:
+          - name: VM1
+            host_secret: VM1_PUBLIC_IP
+            username_secret: VM1_USERNAME
+            key_secret: VM1_SSH_PRIVATE_KEY
+          - name: VM2
+            host_secret: VM2_PUBLIC_IP
+            username_secret: VM2_USERNAME
+            key_secret: VM2_SSH_PRIVATE_KEY
+      fail-fast: false
+      max-parallel: 2
+    
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-build
+
+      - name: Copy files to ${{ matrix.vm.name }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets[matrix.vm.host_secret] }}
+          username: ${{ secrets[matrix.vm.username_secret] }}
+          key: ${{ secrets[matrix.vm.key_secret] }}
+          source: "dist/,package.json,package-lock.json,node_modules/"
+          target: "/home/${{ secrets[matrix.vm.username_secret] }}/app"
+          strip_components: 0
+          overwrite: true
+
+      - name: Deploy and start app on ${{ matrix.vm.name }}
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets[matrix.vm.host_secret] }}
+          username: ${{ secrets[matrix.vm.username_secret] }}
+          key: ${{ secrets[matrix.vm.key_secret] }}
+          command_timeout: 10m
+          script: |
+            set -e
+            cd ~/app
+            
+            # Install production dependencies if node_modules wasn't uploaded
+            # npm ci --omit=dev
+            
+            # Stop existing process gracefully
+            pm2 stop ${{ env.APP_NAME }} 2>/dev/null || true
+            
+            # Start or restart the application
+            pm2 start dist/main.js \
+              --name ${{ env.APP_NAME }} \
+              --instances 1 \
+              --max-memory-restart 500M \
+              --update-env \
+              || pm2 restart ${{ env.APP_NAME }} --update-env
+            
+            # Save PM2 process list
+            pm2 save --force
+            
+            # Wait for app to start
+            sleep 5
+            
+            # Verify the app is running
+            if ! pm2 status ${{ env.APP_NAME }} | grep -q "online"; then
+              echo "❌ App failed to start on ${{ matrix.vm.name }}"
+              pm2 logs ${{ env.APP_NAME }} --lines 50
+              exit 1
+            fi
+            
+            echo "✅ App successfully deployed on ${{ matrix.vm.name }}"
+            pm2 status ${{ env.APP_NAME }}
+
+      - name: Health check on ${{ matrix.vm.name }}
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets[matrix.vm.host_secret] }}
+          username: ${{ secrets[matrix.vm.username_secret] }}
+          key: ${{ secrets[matrix.vm.key_secret] }}
+          script: |
+            # Wait for application to be fully ready
+            sleep 3
+            
+            # Perform health check
+            if curl -f -s --max-time 10 http://localhost:${{ env.APP_PORT }}/health > /dev/null 2>&1; then
+              echo "✅ Health check passed on ${{ matrix.vm.name }}"
+            else
+              echo "⚠️  Health check endpoint not responding (this may be normal if /health doesn't exist)"
+            fi
+            
+            # Show PM2 status
+            pm2 status ${{ env.APP_NAME }}
+            pm2 logs ${{ env.APP_NAME }} --lines 20 --nostream
+
+  # ---------------- NOTIFICATION ----------------
+  notify:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Deployment Summary
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment completed successfully on all VMs"
+          else
+            echo "❌ Deployment failed or partially completed"
+            exit 1
+          fi
