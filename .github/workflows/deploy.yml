@@ -91,36 +91,40 @@ jobs:
           script: |
             set -e
             cd /home/adminuser/app
+
+            pm2 stop ${{ env.APP_NAME }} 2>/dev/null || true
+
+            pm2 start npm --name ${{ env.APP_NAME }} -- run start -- --host 0.0.0.0
             
             # Install production dependencies if node_modules wasn't uploaded
             # npm ci --omit=dev
             
-            # Stop existing process gracefully
-            pm2 stop ${{ env.APP_NAME }} 2>/dev/null || true
+            # # Stop existing process gracefully
+            # pm2 stop ${{ env.APP_NAME }} 2>/dev/null || true
             
-            # Start or restart the application
-            pm2 start dist/main.js \
-              --name ${{ env.APP_NAME }} \
-              --instances 1 \
-              --max-memory-restart 500M \
-              --update-env \
-              || pm2 restart ${{ env.APP_NAME }} --update-env
+            # # Start or restart the application
+            # pm2 start dist/main.js \
+            #   --name ${{ env.APP_NAME }} \
+            #   --instances 1 \
+            #   --max-memory-restart 500M \
+            #   --update-env \
+            #   || pm2 restart ${{ env.APP_NAME }} --update-env
             
-            # Save PM2 process list
-            pm2 save --force
+            # # Save PM2 process list
+            # pm2 save --force
             
-            # Wait for app to start
-            sleep 5
+            # # Wait for app to start
+            # sleep 5
             
-            # Verify the app is running
-            if ! pm2 status ${{ env.APP_NAME }} | grep -q "online"; then
-              echo "❌ App failed to start on ${{ matrix.vm.name }}"
-              pm2 logs ${{ env.APP_NAME }} --lines 50
-              exit 1
-            fi
+            # # Verify the app is running
+            # if ! pm2 status ${{ env.APP_NAME }} | grep -q "online"; then
+            #   echo "❌ App failed to start on ${{ matrix.vm.name }}"
+            #   pm2 logs ${{ env.APP_NAME }} --lines 50
+            #   exit 1
+            # fi
             
-            echo "✅ App successfully deployed on ${{ matrix.vm.name }}"
-            pm2 status ${{ env.APP_NAME }}
+            # echo "✅ App successfully deployed on ${{ matrix.vm.name }}"
+            # pm2 status ${{ env.APP_NAME }}
 
       - name: Health check on ${{ matrix.vm.name }}
         uses: appleboy/ssh-action@v1.0.0
