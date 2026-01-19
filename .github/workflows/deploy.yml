@@ -90,7 +90,7 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            cd ~/app
+            cd /home/adminuser/app
             
             # Install production dependencies if node_modules wasn't uploaded
             # npm ci --omit=dev
