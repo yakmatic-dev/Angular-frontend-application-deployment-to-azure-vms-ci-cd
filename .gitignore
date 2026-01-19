@@ -1,0 +1,9 @@
+# Node / Angular
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
