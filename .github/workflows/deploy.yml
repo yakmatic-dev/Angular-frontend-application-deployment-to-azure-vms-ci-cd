@@ -92,6 +92,8 @@ jobs:
             set -e
             cd /home/adminuser/app
 
+            npm ci --omit=dev
+
             pm2 stop ${{ env.APP_NAME }} 2>/dev/null || true
 
             pm2 start npm --name ${{ env.APP_NAME }} -- run start -- --host 0.0.0.0
