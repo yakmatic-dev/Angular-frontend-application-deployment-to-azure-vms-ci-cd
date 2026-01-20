@@ -69,7 +69,8 @@ jobs:
             # Install Node.js dependencies
             echo ""
             echo "📥 Installing dependencies..."
-            npm ci
+            npm install
+            npm run build
             
             # Stop existing PM2 process
             echo ""
