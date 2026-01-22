@@ -47,6 +47,8 @@ Each VM must have:
 - **curl** installed (for health checks)
 - **systemd** (for PM2 startup scripts)
 
+<img width="381" height="148" alt="image" src="https://github.com/user-attachments/assets/153f6822-e6e0-40b6-8857-73872a9055d6" />
+
 ### GitHub Repository Secrets
 
 Configure the following secrets in your GitHub repository (Settings → Secrets and variables → Actions):
@@ -219,6 +221,7 @@ pm2 logs ts-app --err
 # Monitor process status
 pm2 monit
 ```
+<img width="1532" height="680" alt="image" src="https://github.com/user-attachments/assets/795924d6-d3de-4b44-b8a9-e14294ee7b0a" />
 
 ### Check Application Status
 
@@ -354,6 +357,10 @@ npm install
 npm run build
 pm2 restart ts-app
 ```
+<img width="1896" height="579" alt="image" src="https://github.com/user-attachments/assets/aa904fdb-b3b7-4ce3-89fd-1e97b0fef023" />
+
+<img width="1917" height="600" alt="image" src="https://github.com/user-attachments/assets/ffa634e4-418b-4a20-9434-b8079d19b2d7" />
+
 
 
 ## Contact 
