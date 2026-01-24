@@ -360,13 +360,10 @@ pm2 restart ts-app
 <img width="1896" height="579" alt="image" src="https://github.com/user-attachments/assets/aa904fdb-b3b7-4ce3-89fd-1e97b0fef023" />
 
 <img width="1917" height="600" alt="image" src="https://github.com/user-attachments/assets/ffa634e4-418b-4a20-9434-b8079d19b2d7" />
-
-
-
 ## Contact 
 
 For issues or questions or comment:
 - Open an issue in GitHub
 - yakubiliyas12@gmail.com
 - Contact your DevOps team
-- Review Azure VM logs in Azure Portal
+  
